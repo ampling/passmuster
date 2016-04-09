@@ -17,13 +17,20 @@ password_files=( "${password_files[@]%.gpg}" )
 
 if [[ $typeit -eq 0 ]]; then
     for password in $(printf '%s\n' "${password_files[@]}" | 
-	dmenu -f "$@"); do
-	pass show $password | 
-	    xclip -l 1 -quiet -sel $X_SELECTION
+	dmenu -f "$@");  do
+	lot+=($password)
     done
 
-[[ -n $password ]] || exit
+    [[ -n $password ]] || exit
 
+    if [ ${#lot[@]} -gt "0" ]; then
+	for entry in "${lot[@]}";  do
+	      pass show $entry | awk 'NR==1' | 
+	      xclip -l 1 -quiet -sel $X_SELECTION
+	done
+    else
+	pass show -c "$password" 2>/dev/null
+    fi
 else
     pass show "$password" | { read -r pass; printf %s "$pass"; } |
 	xdotool type --clearmodifiers --file -
