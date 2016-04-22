@@ -8,13 +8,14 @@ if [[ $1 == "--type" ]]; then
     shift
 fi
 
-X_SELECTION="$PASSWORD_STORE_X_SELECTION"
-prefix=${PASSWORD_STORE_DIR-~/.password-store}
+X_SELECTION="${PASSWORD_STORE_X_SELECTION:-clipboard}"
+prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
 
+## Press Ctrl-Return to continue selecting entries.
 for password in $(printf '%s\n' "${password_files[@]}" | 
     dmenu -f "$@"); do
 	lot+=($password)
@@ -23,15 +24,19 @@ done
 [[ -n $password ]] || exit
 
 if [[ $typeit -eq 0 ]]; then
-    xclip -sel clip -o | xclip -sel sec -i
+    xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
     if [ ${#lot[@]} -gt "1" ]; then
+        x=0
 	for entry in "${lot[@]}"; do
-	    pass show $entry | awk 'NR==1' | 
-	    xclip -l 1 -quiet -sel $X_SELECTION &>/dev/null
+	    printf '%s\n' "Sending "${lot[$x]}" via "$X_SELECTION""
+	    pass show $entry | head -n 1 | tr -d '\n' |
+	    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+	    x=`expr $x + 1`
 	done
-    xclip -sel sec -o | xclip -sel clip -i
+    xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
+    printf "" | xclip -sel sec -i 
     else
-	pass show -c "$password" &>/dev/null
+	pass -c "$password" 2>/dev/null
     fi 
 else
     pass show "$password" | { read -r pass; printf %s "$pass"; } |
