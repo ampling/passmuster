@@ -8,30 +8,31 @@ if [[ $1 == "--type" ]]; then
     shift
 fi
 
-X_SELECTION="${PASSWORD_STORE_X_SELECTION:-clipboard}"
+X_SELECTION="${PASSWORD_STORE_X_SELECTION:-primary}"
 prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
 
-## Press Ctrl-Return to continue selecting entries.
+## dmenu exits on KeyPress.  
+## We should send KeyRelease event to some dummy window.
 for password in $(printf '%s\n' "${password_files[@]}" | 
     dmenu -f "$@"); do
-	lot+=($password)
+	passel+=($password)
 done
 
 [[ -n $password ]] || exit
 
 if [[ $typeit -eq 0 ]]; then
-    if [ ${#lot[@]} -gt "1" ]; then
-        x=0
+    if [ ${#passel[@]} -gt "1" ]; then
+        round=0
 	xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
-	for entry in "${lot[@]}"; do
-	    printf '%s\n' "Sending "${lot[$x]}" via "$X_SELECTION""
+	for entry in "${passel[@]}"; do
+	    printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
 	    pass show $entry | head -n 1 | tr -d '\n' |
 	    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-	    x=`expr $x + 1`
+	    round=`expr $round + 1`
 	done
 	xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
 	printf "" | xclip -sel sec -i
