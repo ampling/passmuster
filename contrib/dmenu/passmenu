@@ -24,17 +24,17 @@ done
 [[ -n $password ]] || exit
 
 if [[ $typeit -eq 0 ]]; then
-    xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
     if [ ${#lot[@]} -gt "1" ]; then
         x=0
+	xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
 	for entry in "${lot[@]}"; do
 	    printf '%s\n' "Sending "${lot[$x]}" via "$X_SELECTION""
 	    pass show $entry | head -n 1 | tr -d '\n' |
 	    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
 	    x=`expr $x + 1`
 	done
-    xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
-    printf "" | xclip -sel sec -i 
+	xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
+	printf "" | xclip -sel sec -i
     else
 	pass -c "$password" 2>/dev/null
     fi 
