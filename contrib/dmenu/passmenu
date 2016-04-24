@@ -40,6 +40,20 @@ if [[ $typeit -eq 0 ]]; then
 	pass -c "$password" 2>/dev/null
     fi 
 else
-    pass show "$password" | { read -r pass; printf %s "$pass"; } |
-	xdotool type --clearmodifiers --file -
+    if [ ${#passel[@]} -gt "1" ]; then
+        round=0
+	xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
+	for entry in "${passel[@]}"; do
+	    printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
+	    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+	    pass show "$entry" | { read -r pass; printf %s "$pass"; } |
+		xdotool type --clearmodifiers --file -
+	    round=`expr $round + 1`
+	done
+	xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
+	printf "" | xclip -sel sec -i
+    else
+	pass show "$password" | { read -r pass; printf %s "$pass"; } |
+	    xdotool type --clearmodifiers --file -
+    fi
 fi
