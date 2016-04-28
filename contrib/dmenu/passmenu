@@ -4,56 +4,69 @@ shopt -s nullglob globstar
 
 typeit=0
 if [[ $1 == "--type" ]]; then
-    typeit=1
-    shift
+  typeit=1
+  shift
 fi
 
-X_SELECTION="${PASSWORD_STORE_X_SELECTION:-primary}"
+X_SELECTION="${PASSWORD_STORE_X_SELECTION:-clipboard}"
 prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
 
-## dmenu exits on KeyPress.  
-## We should send KeyRelease event to some dummy window.
-for password in $(printf '%s\n' "${password_files[@]}" | 
-    dmenu -f "$@"); do
-	passel+=($password)
+## Preexisting xclip loops can cause unanticipated behavior.
+exec {lock_fd}>/tmp/passmenulock || exit 1
+flock -n "$lock_fd" || 
+  { xclip -sel "$X_SELECTION" -o >/dev/null 2>&1 
+    flock -n "$lock_fd" ||
+    printf '%s\n' 'Already running' >&2
+    exit 1
+  }
+
+## dmenu exits on KeyPress not KeyRelease.
+## It would be nice to send KeyRelease event to some dummy window.
+for password in $(printf '%s\n' "${password_files[@]}" |
+  dmenu -f "$@"); do
+  passel+=($password)
 done
 
 [[ -n $password ]] || exit
-
+ 
 if [[ $typeit -eq 0 ]]; then
-    if [ ${#passel[@]} -gt "1" ]; then
-        round=0
-	xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
-	for entry in "${passel[@]}"; do
-	    printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
-	    pass show $entry | head -n 1 | tr -d '\n' |
-	    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-	    round=`expr $round + 1`
-	done
-	xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
-	printf "" | xclip -sel sec -i
-    else
-	pass -c "$password" 2>/dev/null
-    fi 
+  if [ ${#passel[@]} -gt "1" ]; then
+    xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
+    round=0
+    for entry in "${passel[@]}"; do
+      printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
+      pass show $entry | sed '1!d' | tr -d '\n' |
+      xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
+      ~/bin/beeponce
+      round=`expr $round + 1`
+    done
+    xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
+  else
+    pass -c "$password" 2>/dev/null
+  fi
 else
-    if [ ${#passel[@]} -gt "1" ]; then
-        round=0
-	xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
-	for entry in "${passel[@]}"; do
-	    printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
-	    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-	    pass show "$entry" | { read -r pass; printf %s "$pass"; } |
-		xdotool type --clearmodifiers --file -
-	    round=`expr $round + 1`
-	done
-	xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
-	printf "" | xclip -sel sec -i
-    else
-	pass show "$password" | { read -r pass; printf %s "$pass"; } |
-	    xdotool type --clearmodifiers --file -
-    fi
+  command -v xdotool >/dev/null 2>&1 ||
+  { echo >&2 "e: cannot find xdotool."; exit 1; }
+  if [ ${#passel[@]} -gt "1" ]; then
+    xclip -sel "$X_SELECTION" -o | xclip -sel sec -i
+    round=0
+    for entry in "${passel[@]}"; do
+      printf '%s\n' "Sending "${passel[$round]}" via "$X_SELECTION""
+      printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
+      ~/bin/beeponce
+      pass show "$entry" | sed '1!d' | tr -d '\n' | 
+      xdotool type --clearmodifiers --file -
+      round=`expr $round + 1`
+    done
+    xclip -sel sec -o | xclip -sel "$X_SELECTION" -i
+  else
+    pass show "$password" | sed '1!d' | tr -d '\n' |
+    xdotool type --clearmodifiers --file -
+  fi
 fi
+printf "" | xclip -sel sec -i
+flock -u "$lock_fd"
