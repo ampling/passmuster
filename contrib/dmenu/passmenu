@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-shopt -s nullglob globstar
-set -o errexit
+shopt -s nullglob globstar failglob
+set -euo pipefail
 
+tool=${1:-} 
 typeit=0
-if [[ $1 == "--type" ]]; then
+if [[ $tool == "--type" ]]; then
   typeit=1
   shift
 fi
@@ -18,37 +19,28 @@ password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
 
 _finish () {
-  [[ 1 = "$remove" ]]
-    rmdir /tmp/passmenu."$uid".* 2>/dev/null
-    ## kill more child processes here.
-    # echo $(ps -o pgid=$$ | grep -o [0-9]*)
-    printf "$buffer" | xclip -sel "$X_SELECTION" -i
+  [[ -n $before ]] &&
+  printf "$before" | xclip -sel "$X_SELECTION" -i
+  [[ True = "$remove" ]] &&
+  if compgen -G "/tmp/passmenu.1000*" >/dev/null 2>&1 ;then
+    rmdir /tmp/passmenu."$uid".* >/dev/null 2>&1
+  fi
   exit
-  }
+}
 trap _finish EXIT
 
-_fire () {
+## Clearing stale Xclip loops avoids a posible race condition.
+uid="$(id -u $(whoami))"
+remove=False
+if compgen -G "/tmp/passmenu.1000*" >/dev/null 2>&1 ;then
   stale="$(find /tmp/passmenu."$uid".* -print -quit | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")"
   report="$(ps -u $(id -u $(whoami)) aux | grep "bash" | 
   grep "passmenu" | grep -v "$$")"
-  if [[ "$report" == *"passmenu"* ]] ;then 
+  if [[ "$report" == *"$stale"* ]] ;then 
     kill "$stale" && rmdir /tmp/passmenu.$uid.* >/dev/null 2>&1 || exit 1
   else
     rmdir /tmp/passmenu.$uid.* >/dev/null 2>&1 || exit 1
-  fi
-}
-
-## Clearing stale Xclip loops avoids a posible race condition.
-uid="$(id -u $(whoami))"
-remove=0
-if compgen -G "/tmp/passmenu.1000*" >/dev/null 2>&1 ;then
-  question=$(printf 'yes\nno'|
-  dmenu -nf red -f -p "The clipboard is locked by another process. Kill it with fire?")
-  if [ "$question" = 'yes' ] ;then
-    _fire
-  else
-    exit 0
   fi
 fi
 
@@ -56,18 +48,20 @@ fi
 ## It would be nice to send KeyRelease event to some dummy window.
 ## psydocode: xdotool getwindowfocus; create dummy window;
 ## exec dmenu; close dummy window; restore focus.
-for password in $(printf '%s\n' "${password_files[@]}" |
-  dmenu -f "$@"); do
+password=${password:-}
+for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$password")
 done
 
+before=${before:-}
 [[ -n $password ]] || exit
+before="$(xclip -sel "$X_SELECTION" -o >/dev/null 2>&1)" || true
 
 umask 077
-mktemp -d "/tmp/passmenu."$uid".XXXXXXXXXX"."$$" >/dev/null 2>&1 || exit 1  
-remove=1
+mktemp -d "/tmp/passmenu."$uid".XXXXXXXXXX"."$$" >/dev/null 2>&1 ||
+{ echo >&2 ":: Unable to make a filelock."; exit 1; }
+remove=True
 
-buffer="$(xclip -sel "$X_SELECTION" -o)"
 if [[ $typeit -eq 0 ]]; then
   if [ ${#passel[@]} -gt "1" ]; then
     round=0
@@ -78,12 +72,12 @@ if [[ $typeit -eq 0 ]]; then
       round=`expr $round + 1`
     done
   else
+    printf '%s\n' "Sending "$password" via "$X_SELECTION""
     pass show "$password" | sed '1!d' | tr -d '\n' |
-    xclip -sel "$X_SELECTION" -i 
-    sleep "$CLIP_TIME"
+    xclip -sel "$X_SELECTION" -i && sleep "$CLIP_TIME" 
   fi
 else
-  command -v xdotool >/dev/null 2>&1 ||
+  command -v xdotool >/dev/null 2>&1 || 
   { echo >&2 "e: cannot find xdotool."; exit 1; }
   if [ ${#passel[@]} -gt "1" ]; then
     round=0
