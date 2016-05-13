@@ -17,25 +17,37 @@ prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
-password=( ${password:-""} )
-before=( "${before:-}" )
-userID="$(id -u $(whoami))"
-stalelock=( "${stalelock:-""}" )
-stalelock=( "$(find '/tmp' -maxdepth 1 -name "passmenulock."$userID".*" -user $(whoami) -print0  -quit)" ) &&
-cleanup=True || { true; cleanup=False; }
+password=( '' )
+cleanup=( '' )
+before=( '' )
+userID=( "$(id -u $(whoami))" )
 
 _finish () {
-  [[ -n $before ]] &&
+  [[ True == $cleanup ]] &&
   printf "$before" | base64 -d | xclip -sel "$X_SELECTION" -i
   [[ True = "$cleanup" ]] &&
   if compgen -G "/tmp/passmenulock.1000*" >/dev/null 2>&1 ;then
-    rmdir /tmp/passmenulock."$userID".* >/dev/null 2>&1
+    rmdir /tmp/passmenulock.*.*."$$" >/dev/null 2>&1
   fi
   exit
 }
+
+## dmenu exits on KeyPress not KeyRelease.
+# It might be nice to send KeyRelease event to some dummy window.
+# psydocode: xdotool getwindowfocus; create dummy window;
+# exec dmenu; close dummy window; restore focus.
+for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
+  passel+=("$password")
+done
+
+[[ -n $password ]] || exit
+
 trap _finish EXIT
 
-## Clearing stale Xclip loops avoids a posible race condition.
+## Clearing old filelock(s). 
+umask 077
+stalelock=( "${stalelock:-''}" )
+stalelock=( "$(find '/tmp' -maxdepth 1 -name "passmenulock."$userID".*" -user $(whoami) -print0  -quit)" ) &&
 if test -n "$stalelock" ;then
   report=( "$(ps -u $(id -u $(whoami)) aux | grep "bash" | 
   grep "passmenu" | grep -v "$$")" )
@@ -44,25 +56,18 @@ if test -n "$stalelock" ;then
   if [[ "$report" == *"$stalePID"* ]] ;then
     kill "$stalePID" || exit 1
   else
-    rmdir /tmp/passmenulock.$userID.* >/dev/null 2>&1 || exit 1
+    rmdir /tmp/passmenulock."$userID".* >/dev/null 2>&1 ||
+    { echo ":: Unable to clear old filelock"; exit 1; }
   fi
 fi
 
-## dmenu exits on KeyPress not KeyRelease.
-# It would be nice to send KeyRelease event to some dummy window.
-# psydocode: xdotool getwindowfocus; create dummy window;
-# exec dmenu; close dummy window; restore focus.
-for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
-  passel+=("$password")
-done
-
-[[ -n $password ]] || exit
-# It would be nice to first somehow test if string exists.
-before="$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64)" || true
-
-umask 077
+## Adding a new filelock
 ( mktemp -d "/tmp/passmenulock."$userID".XXXXXXXXXX"."$$" >/dev/null 2>&1 && cleanup=True ||
   { echo >&2 ":: Unable to make a filelock."; exit 1; } )
+
+cleanup=True
+# It would be nice to first first test if string exists.
+before="$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64)" || true
 
 if [[ $typeit -eq 0 ]]; then
   if [ ${#passel[@]} -gt "1" ]; then
