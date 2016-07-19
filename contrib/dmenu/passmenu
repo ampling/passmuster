@@ -26,8 +26,8 @@ _finish () {
   [[ True == $cleanup ]] &&
   printf "$before" | base64 -d | xclip -sel "$X_SELECTION" -i
   [[ True = "$cleanup" ]] &&
-  if compgen -G "/tmp/passmenulock.1000*" >/dev/null 2>&1 ;then
-    rmdir /tmp/passmenulock.*.*."$$" >/dev/null 2>&1
+  if compgen -G "/tmp/passmenu.1000*" >/dev/null 2>&1 ;then
+    rmdir /tmp/passmenu.*.*."$$".lock >/dev/null 2>&1
   fi
   exit
 }
@@ -47,22 +47,23 @@ trap _finish EXIT
 ## Clearing old filelock(s). 
 umask 077
 stalelock=( "${stalelock:-''}" )
-stalelock=( "$(find '/tmp' -maxdepth 1 -name "passmenulock."$userID".*" -user $(whoami) -print0  -quit)" ) &&
+stalelock=( "$(find '/tmp' -maxdepth 1 -name "passmenu."$userID".*" -user $(whoami) -print0  -quit -type d)" ) &&
 if test -n "$stalelock" ;then
+  stalename=${stalelock%.*}
   report=( "$(ps -u $(id -u $(whoami)) aux | grep "bash" | 
   grep "passmenu" | grep -v "$$")" )
-  stalePID=( "$(printf $stalelock | 
-  sed -e "s/\/tmp\/passmenulock\.[0-9]\{1,6\}\?\..*\.//g")" )
+  stalePID=( "$(printf $stalename | 
+  sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")" )
   if [[ "$report" == *"$stalePID"* ]] ;then
     kill "$stalePID" || exit 1
   else
-    rmdir /tmp/passmenulock."$userID".* >/dev/null 2>&1 ||
+    rmdir /tmp/passmenu."$userID".* >/dev/null 2>&1 ||
     { echo ":: Unable to clear old filelock"; exit 1; }
   fi
 fi
 
 ## Adding a new filelock
-( mktemp -d "/tmp/passmenulock."$userID".XXXXXXXXXX"."$$" >/dev/null 2>&1 && cleanup=True ||
+( mktemp -d "/tmp/passmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 && cleanup=True ||
   { echo >&2 ":: Unable to make a filelock."; exit 1; } )
 
 cleanup=True
