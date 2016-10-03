@@ -116,13 +116,13 @@ else
       printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
       pass show "$entry" | sed '1!d' | tr -d '\n' | 
       xdotool type --delay --clearmodifiers --file -
-      _notify "Sent "${passel[$round]}" via "autotype""
+      _notify "Sent "${passel[$round]}" via 'xdotool'"
       round=`expr $round + 1`
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
     xdotool type --delay --clearmodifiers --file -
-    _notify "Sent "$password" via "autotype""
+    _notify "Sent "$password" via 'xdotool'"
   fi
 fi
 exit
