@@ -31,10 +31,9 @@ userID=( "$(id -u $(whoami))" )
 PROGRAM="${0##*/}"
 
 _finish () {
-  [[ True == $cleanup ]] &&
-  printf "$before" | base64 -d | xclip -sel "$X_SELECTION" -i
-  [[ True = "$cleanup" ]] &&
-  if compgen -G "/tmp/passmenu.1000*" >/dev/null 2>&1 ;then
+  [[ True == "$cleanup" ]] &&
+  printf "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
+  if compgen -G "/tmp/passmenu."$userID"*" >/dev/null 2>&1 ;then
     rmdir /tmp/passmenu.*.*."$$".lock >/dev/null 2>&1
   fi
   exit
@@ -61,10 +60,10 @@ for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$password")
 done
 
-[[ -n $password ]] || exit
-
 # Runs the _finish funtion on exit. 
 trap _finish EXIT
+
+[[ -n $password ]] || exit
 
 ## Clearing old filelock(s). 
 umask 077
@@ -77,7 +76,7 @@ if test -n "$stalelock" ;then
   stalePID=( "$(printf $stalename | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")" )
   if [[ "$report" == *"$stalePID"* ]] ;then
-    kill "$stalePID" || exit 1
+    kill $(ps -o pid= --ppid "$stalePID" ) || exit 1
   else
     rmdir /tmp/passmenu."$userID".* >/dev/null 2>&1 ||
     { _notify ":: Unable to clear old filelock"; exit 1; }
@@ -85,12 +84,13 @@ if test -n "$stalelock" ;then
 fi
 
 ## Adding a new filelock
-( mktemp -d "/tmp/passmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 && cleanup=True ||
-  { _notify ":: Unable to make filelock."; exit 1; } )
+( mktemp -d "/tmp/passmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 ||
+  { _notify ":: Unable to make filelock."; exit 1; } ) &&
+  cleanup="True"
 
-cleanup=True
-# It would be nice to first first test if string exists.
+# It would be nice to first test if string exists.
 before="$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64)" || true
+cleanup="True"
 
 if [[ $typeit -eq 0 ]]; then
   ## CLIPBOARD
