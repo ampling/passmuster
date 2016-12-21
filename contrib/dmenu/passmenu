@@ -24,16 +24,15 @@ prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
-password=( '' )
-cleanup=( '' )
-before=( '' )
-userID=( "$(id -u $(whoami))" )
-PROGRAM="${0##*/}"
+password=''
+cleanup=''
+before=''
+userID=$(id -u "$(whoami)")
 
 _finish () {
   [[ True == "$cleanup" ]] &&
-  printf "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
-  if compgen -G "/tmp/passmenu."$userID"*" >/dev/null 2>&1 ;then
+  printf %s "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
+  if compgen -G "/tmp/passmenu.$userID*" >/dev/null 2>&1 ;then
     rmdir /tmp/passmenu.*.*."$$".lock >/dev/null 2>&1
   fi
   exit
@@ -67,16 +66,16 @@ trap _finish EXIT
 
 ## Clearing old filelock(s). 
 umask 077
-stalelock=( "${stalelock:-''}" )
-stalelock=( "$(find '/tmp' -maxdepth 1 -name "passmenu."$userID".*" -user $(whoami) -print0  -quit -type d)" ) &&
+stalelock="${stalelock:-''}"
+stalelock="$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d)" &&
 if test -n "$stalelock" ;then
   stalename=${stalelock%.*}
-  report=( "$(ps -u $(id -u $(whoami)) aux | grep "bash" | 
-  grep "passmenu" | grep -v "$$")" )
-  stalePID=( "$(printf $stalename | 
-  sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")" )
+  report="$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | 
+  grep "passmenu" | grep -v "$$")"
+  stalePID=$(printf %s "$stalename" | 
+  sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
   if [[ "$report" == *"$stalePID"* ]] ;then
-    kill $(ps -o pid= --ppid "$stalePID" ) || exit 1
+    kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
   else
     rmdir /tmp/passmenu."$userID".* >/dev/null 2>&1 ||
     { _notify ":: Unable to clear old filelock"; exit 1; }
@@ -84,13 +83,13 @@ if test -n "$stalelock" ;then
 fi
 
 ## Adding a new filelock
-( mktemp -d "/tmp/passmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 ||
+( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" >/dev/null 2>&1 ||
   { _notify ":: Unable to make filelock."; exit 1; } ) &&
-  cleanup="True"
+  cleanup=True
 
 # It would be nice to first test if string exists.
 before="$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64)" || true
-cleanup="True"
+cleanup=True
 
 if [[ $typeit -eq 0 ]]; then
   ## CLIPBOARD
@@ -99,13 +98,13 @@ if [[ $typeit -eq 0 ]]; then
     for entry in "${passel[@]}"; do
       pass show "$entry" | sed '1!d' | tr -d '\n' |
       xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
-      _notify "Sent "${passel[$round]}" via "$X_SELECTION""
+      _notify "Sent ${passel[$round]} via $X_SELECTION"
       round=`expr $round + 1`
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
     xclip -sel "$X_SELECTION" -i
-    _notify "Sent "$password" via "$X_SELECTION""
+    _notify "Sent $password via $X_SELECTION"
     sleep "$CLIP_TIME"
   fi
 else
@@ -116,13 +115,13 @@ else
       printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
       pass show "$entry" | sed '1!d' | tr -d '\n' | 
       xdotool type --delay --clearmodifiers --file -
-      _notify "Sent "${passel[$round]}" via 'xdotool'"
+      _notify "Sent ${passel[$round]} via 'xdotool'"
       round=`expr $round + 1`
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
     xdotool type --delay --clearmodifiers --file -
-    _notify "Sent "$password" via 'xdotool'"
+    _notify "Sent $password via 'xdotool'"
   fi
 fi
 exit
