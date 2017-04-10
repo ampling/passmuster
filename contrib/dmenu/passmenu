@@ -12,6 +12,7 @@ if [[ '--type' == "$arg1" ]] || [[ '--type' == "$arg2" ]]; then
   typeit=1;
   shift
 fi 
+
 if [[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]]; then
   notifyit=1;
   shift
@@ -93,13 +94,13 @@ cleanup=True
 
 if [[ $typeit -eq 0 ]]; then
   ## CLIPBOARD
-  if [ ${#passel[@]} -gt "1" ]; then
+  if [[ ${#passel[@]} -gt "1" ]]; then
     round=0
     for entry in "${passel[@]}"; do
       pass show "$entry" | sed '1!d' | tr -d '\n' |
       xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
       _notify "Sent ${passel[$round]} via $X_SELECTION"
-      round=`expr $round + 1`
+      round=$((round + 1))
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
@@ -109,14 +110,14 @@ if [[ $typeit -eq 0 ]]; then
   fi
 else
   ## TYPE
-  if [ ${#passel[@]} -gt "1" ]; then
+  if [[ ${#passel[@]} -gt "1" ]]; then
     round=0
     for entry in "${passel[@]}"; do
       printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
       pass show "$entry" | sed '1!d' | tr -d '\n' | 
       xdotool type --delay --clearmodifiers --file -
       _notify "Sent ${passel[$round]} via 'xdotool'"
-      round=`expr $round + 1`
+      round=$((round + 1))
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
