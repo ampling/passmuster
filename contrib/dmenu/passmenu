@@ -8,19 +8,17 @@ arg2=${2:-}
 typeit=0
 notifyit=0
 
-if [[ '--type' == "$arg1" ]] || [[ '--type' == "$arg2" ]]; then
-  typeit=1;
-  shift
-fi 
+[[ '--type' == "$arg1" ]] || [[ '--type' == "$arg2" ]] &&
+typeit=1 &&
+shift
 
-if [[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]]; then
-  notifyit=1;
-  shift
-fi
+[[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]] &&
+notifyit=1 &&
+shift
 
-X_SELECTION="${PASSWORD_STORE_X_SELECTION:-clipboard}"
-CLIP_TIME="${PASSWORD_STORE_CLIP_TIME:-45}"
-prefix="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
+CLIP_TIME=${PASSWORD_STORE_CLIP_TIME:-45}
+prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
 
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
@@ -67,12 +65,11 @@ trap _finish EXIT
 
 ## Clearing old filelock(s). 
 umask 077
-stalelock="${stalelock:-''}"
-stalelock="$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d)" &&
+stalelock=${stalelock:-''}
+stalelock=$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
 if test -n "$stalelock" ;then
   stalename=${stalelock%.*}
-  report="$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | 
-  grep "passmenu" | grep -v "$$")"
+  report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "passmenu" | grep -v "$$")
   stalePID=$(printf %s "$stalename" | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
   if [[ "$report" == *"$stalePID"* ]] ;then
@@ -89,7 +86,7 @@ fi
   cleanup=True
 
 # It would be nice to first test if string exists.
-before="$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64)" || true
+before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true
 cleanup=True
 
 if [[ $typeit -eq 0 ]]; then
