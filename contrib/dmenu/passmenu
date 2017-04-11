@@ -1,33 +1,41 @@
 #!/usr/bin/env bash
 
+## DEPENDENCIES;  pass, dmenu
+## (optional)     libnotify, xdotool
+
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
-arg1=${1:-} 
-arg2=${2:-} 
-typeit=0
-notifyit=0
-
-[[ '--type' == "$arg1" ]] || [[ '--type' == "$arg2" ]] &&
-typeit=1 &&
-shift
-
-[[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]] &&
-notifyit=1 &&
-shift
-
+## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 CLIP_TIME=${PASSWORD_STORE_CLIP_TIME:-45}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
+version=passmenu-0.1.0
 
-password_files=( "$prefix"/**/*.gpg )
-password_files=( "${password_files[@]#"$prefix"/}" )
-password_files=( "${password_files[@]%.gpg}" )
+## Try to use libnotify.
+{ hash notify-send 2>/dev/null && notifyit=1; } || 
+{ printf '%s\n' "w: libnotify not found" && notifyit=0; }
+
+_notify () {
+  message=$1
+  [[ "$notifyit" == 1 ]] && 
+  notify-send "$message" --icon=dialog-information || printf '%s\n' "$message"
+}
+
+
+## VARIABLES
+arg1=${1:-} 
+arg2=${2:-} 
+password_files=( $prefix/**/*.gpg )
+password_files=( ${password_files[@]#"$prefix"/} )
+password_files=( ${password_files[@]%.gpg} )
 password=''
 cleanup=''
 before=''
 userID=$(id -u "$(whoami)")
+usage="${0##*/} [-h help] [-v version] [<dmenu []>]"
 
+## FUNTIONS
 _finish () {
   [[ True == "$cleanup" ]] &&
   printf %s "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
@@ -37,17 +45,15 @@ _finish () {
   exit
 }
 
-_notify () {
-  message=$1
-  [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=dialog-information || 
-  printf '%s\n' "$message"
-}
 
-( [[ "$notifyit" == 1 ]] & hash notify-send 2>/dev/null || 
-  { printf '%s\n' "e: cannot find libnotify."; exit 1; }
-[[ "$typeit" == 1 ]] & hash xdotool 2>/dev/null || 
-  { _notify "e: cannot find xdotool."; exit 1; } )
+{ hash xdotool 2>/dev/null && typeit=1; } || 
+{ _notify "w: xdotool not found."; typeit=0; } 
+
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version"; exit; }
+[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage"; exit; }
+[[ $arg1 == '--type' || $arg2 == '--type' ]] && { typeit=1 && shift; }
+[[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
+[[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
 
 ## dmenu exits on KeyPress not KeyRelease.
@@ -67,12 +73,12 @@ trap _finish EXIT
 umask 077
 stalelock=${stalelock:-''}
 stalelock=$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
-if test -n "$stalelock" ;then
+if [[ -n "$stalelock" ]];then
   stalename=${stalelock%.*}
   report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "passmenu" | grep -v "$$")
   stalePID=$(printf %s "$stalename" | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
-  if [[ "$report" == *"$stalePID"* ]] ;then
+  if [[ $report == *"$stalePID"* ]]; then
     kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
   else
     rmdir /tmp/passmenu."$userID".* >/dev/null 2>&1 ||
@@ -96,30 +102,30 @@ if [[ $typeit -eq 0 ]]; then
     for entry in "${passel[@]}"; do
       pass show "$entry" | sed '1!d' | tr -d '\n' |
       xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
-      _notify "Sent ${passel[$round]} via $X_SELECTION"
+      _notify "${passel[$round]} sent via $X_SELECTION"
       round=$((round + 1))
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
     xclip -sel "$X_SELECTION" -i
-    _notify "Sent $password via $X_SELECTION"
+    _notify "$password sent via $X_SELECTION"
     sleep "$CLIP_TIME"
   fi
 else
-  ## TYPE
+  ## AUTOTYPE
   if [[ ${#passel[@]} -gt "1" ]]; then
     round=0
     for entry in "${passel[@]}"; do
       printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
       pass show "$entry" | sed '1!d' | tr -d '\n' | 
       xdotool type --delay --clearmodifiers --file -
-      _notify "Sent ${passel[$round]} via 'xdotool'"
+      _notify "${passel[$round]} sent via xdotool"
       round=$((round + 1))
     done
   else
     pass show "$password" | sed '1!d' | tr -d '\n' |
     xdotool type --delay --clearmodifiers --file -
-    _notify "Sent $password via 'xdotool'"
+    _notify "$password sent via autotype"
   fi
 fi
 exit
