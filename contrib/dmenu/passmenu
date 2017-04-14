@@ -49,8 +49,8 @@ _finish () {
 { hash xdotool 2>/dev/null && typeit=1; } || 
 { _notify "w: xdotool not found."; typeit=0; } 
 
-[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version"; exit; }
-[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage"; exit; }
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
+[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
 [[ $arg1 == '--type' || $arg2 == '--type' ]] && { typeit=1 && shift; }
 [[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
@@ -76,6 +76,9 @@ stalelock=$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)"
 if [[ -n "$stalelock" ]];then
   stalename=${stalelock%.*}
   report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "passmenu" | grep -v "$$")
+  # report=$(ps -u "user id") aux | grep "bash" | grep "passmenu" | grep "not itself id")
+  report2=$(pgrep -f "${0##*/}" > /dev/null)
+  echo "report2= $report2"
   stalePID=$(printf %s "$stalename" | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
   if [[ $report == *"$stalePID"* ]]; then
