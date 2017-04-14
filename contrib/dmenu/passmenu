@@ -10,20 +10,8 @@ set -euo pipefail
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 CLIP_TIME=${PASSWORD_STORE_CLIP_TIME:-45}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.1.0
+version=passmenu-0.1.1
 
-## Try to use libnotify.
-{ hash notify-send 2>/dev/null && notifyit=1; } || 
-{ printf '%s\n' "w: libnotify not found" && notifyit=0; }
-
-_notify () {
-  message=$1
-  [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=dialog-information || printf '%s\n' "$message"
-}
-
-
-## VARIABLES
 arg1=${1:-} 
 arg2=${2:-} 
 password_files=( $prefix/**/*.gpg )
@@ -35,7 +23,19 @@ before=''
 userID=$(id -u "$(whoami)")
 usage="${0##*/} [-h help] [-v version] [<dmenu []>]"
 
-## FUNTIONS
+
+## Try to use libnotify.
+{ hash notify-send 2>/dev/null && notifyit=1; } || 
+{ printf '%s\n' "w: libnotify not found" && notifyit=0; }
+
+
+_notify () {
+  message=$1
+  [[ "$notifyit" == 1 ]] && 
+  notify-send "$message" --icon=dialog-information || printf '%s\n' "$message"
+}
+
+
 _finish () {
   [[ True == "$cleanup" ]] &&
   printf %s "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
@@ -57,9 +57,7 @@ _finish () {
 
 
 ## dmenu exits on KeyPress not KeyRelease.
-# It might be nice to send KeyRelease event to some dummy window.
-# psydocode: xdotool getwindowfocus; create dummy window;
-# exec dmenu; close dummy window; restore focus.
+## It might be nice to send KeyRelease event to some dummy window.
 for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$password")
 done
