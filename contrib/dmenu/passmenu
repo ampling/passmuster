@@ -8,15 +8,14 @@ set -euo pipefail
 
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
-CLIP_TIME=${PASSWORD_STORE_CLIP_TIME:-45}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
 version=passmenu-0.1.1
 
 arg1=${1:-} 
 arg2=${2:-} 
-password_files=( $prefix/**/*.gpg )
-password_files=( ${password_files[@]#"$prefix"/} )
-password_files=( ${password_files[@]%.gpg} )
+password_files=( "$prefix"/**/*.gpg )
+password_files=( "${password_files[@]#"$prefix"/}" )
+password_files=( "${password_files[@]%.gpg}" )
 password=''
 cleanup=''
 before=''
