@@ -96,24 +96,25 @@ fi
 before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true
 cleanup=True
 
+round=0
 if [[ $typeit -eq 0 ]]; then
-  ## CLIPBOARD
-    round=0
-    for entry in "${passel[@]}"; do
-      pass show "$entry" | sed '1!d' | tr -d '\n' |
-      xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
-      _notify "${passel[$round]} sent via $X_SELECTION"
-      round=$((round + 1))
-    done
+  for entry in "${passel[@]}"; do
+    { ## CLIPBOARD
+    pass show "$entry" | sed '1!d' | tr -d '\n' |
+    xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
+    } &&
+    _notify "${passel[$round]} sent via $X_SELECTION"
+    round=$((round + 1))
+  done
 else
-  ## AUTOTYPE
-    round=0
-    for entry in "${passel[@]}"; do
-      printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
-      pass show "$entry" | sed '1!d' | tr -d '\n' | 
-      xdotool type --delay --clearmodifiers --file -
-      _notify "${passel[$round]} sent via xdotool"
-      round=$((round + 1))
-    done
+  for entry in "${passel[@]}"; do
+    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
+    { ## AUTOTYPE
+    pass show "$entry" | sed '1!d' | tr -d '\n' | 
+    xdotool type --delay --clearmodifiers --file -
+    } &&
+    _notify "${passel[$round]} sent via xdotool"
+    round=$((round + 1))
+  done
 fi
 exit
