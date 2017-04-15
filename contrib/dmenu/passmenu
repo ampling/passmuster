@@ -22,7 +22,7 @@ arg2=${2:-}
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
-password=''
+selection=''
 cleanup=''
 before=''
 myname=${0##*/}
@@ -51,7 +51,7 @@ _clear () {
     stalename=${stalelock%.*}
     report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
     stalePID=$(printf %s "$stalename" | 
-    sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
+    sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
     if [[ $report == *"$stalePID"* ]]; then
       kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
     else
@@ -65,10 +65,9 @@ _finish () {
   [[ True == "$cleanup" ]] &&
   printf %s "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
   compgen -G /tmp/"$myname"."$userID*" >/dev/null 2>&1 &&
-  rmdir /tmp/"$myname".*.*."$$".lock >/dev/null 2>&1
+  rmdir /tmp/passmenu.*.*."$$".lock >/dev/null 2>&1
   exit
 }
-
 
 
 { hash xdotool 2>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; } 
@@ -79,7 +78,7 @@ hash xclip || _notify "w: xclip not found."
 [[ $arg1 == '--clip' || $arg2 == '--clip' ]] && { clipit=1 && shift; }
 [[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
 [[ $arg1 == *k* || $arg2 == *k* ]] &&
-{ printf '%s\n' "cleaning and exiting..."; _clear; exit; }
+{ printf '%s\n' "clean and exit..."; _clear; exit; }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
 # Runs the _finish funtion on exit. 
@@ -87,27 +86,27 @@ trap _finish EXIT
 
 ## dmenu exits on KeyPress not KeyRelease.
 ## It might be nice to send KeyRelease event to some dummy window.
-for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
-  passel+=("$password")
+for selection in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
+  passel+=("$selection")
 done
 
 
-_clear; [[ -n $password ]] || exit
+_clear; [[ -n $selection ]] || exit
 
-## Adding a new filelock
+## Add a new filelock
 ( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" >/dev/null 2>&1 ||
-  { _notify ":: Unable to make filelock."; exit 1; } ) &&
-  cleanup=True
+{ _notify ":: Unable to make filelock."; exit 1; } ) &&
+cleanup=True
 
 # It would be nice to first test if string exists.
-before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true
+{ before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true } &&
 cleanup=True
 
 round=0
 if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
-    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
     { ## AUTOTYPE
+    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
     pass show "$entry" | sed '1!d' | tr -d '\n' | 
     xdotool type --delay --clearmodifiers --file -
     } &&
