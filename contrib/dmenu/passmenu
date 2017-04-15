@@ -15,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.3
+version=passmenu-0.2.4
 
 arg1=${1:-} 
 arg2=${2:-} 
@@ -31,7 +31,7 @@ usage="$myname [-h help] [-k kill] [-v version] [<dmenu []>]"
 
 
 ## Try libnotify first.
-{ hash notify-send 2>/dev/null && notifyit=1; } || 
+{ hash notify-send &>/dev/null && notifyit=1; } || 
 { printf '%s\n' "w: libnotify not found" && notifyit=0; }
 
 
@@ -50,16 +50,12 @@ _clear () {
   if [[ -n "$stalelock" ]]; then
     stalename=${stalelock%.*}
     report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-    echo "report= $report"
-    stalePID=$(printf '%s' "$stalename" | 
-    sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
-    echo "stalePID= $stalePID"
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
     parentID=$(ps -o pid= --ppid "$stalePID" )
-    echo "parentID= $parentID"
     if [[ $report == *"$stalePID"* ]]; then
-      kill "$parentID" || exit 1
+      kill "$parentID" &>/dev/null || exit 1
     else
-      rmdir /tmp/"$myname.$userID".* >/dev/null 2>&1 ||
+      rmdir /tmp/"$myname.$userID".* &>/dev/null ||
       { _notify ":: Unable to clear old filelock"; exit 1; }
     fi
   fi
@@ -75,7 +71,7 @@ _finish () {
 
 
 hash xclip || _notify "w: xclip not found." 
-{ hash xdotool 2>/dev/null && clipit=0; } || 
+{ hash xdotool &>/dev/null && clipit=0; } || 
 { _notify "w: xdotool not found."; clipit=0; } 
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
@@ -99,31 +95,33 @@ done
 _clear; [[ -n $selection ]] || exit
 
 ## Add a new filelock
-( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" >/dev/null 2>&1 ||
+( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
 { _notify ":: Unable to make filelock."; exit 1; } ) &&
 cleanup=True
 
 # It would be nice to first test if string exists.
-before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true
+before=$(xclip -sel "$X_SELECTION" -o &>/dev/null | base64) || true
 cleanup=True
 
 round=0
 if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     ## AUTOTYPE
+    {
     printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     pass show "$entry" | sed '1!d' | tr -d '\n' | 
     xdotool type --delay --clearmodifiers --file - &>/dev/null
-    
+    }
     _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
   done
 else
   for entry in "${passel[@]}"; do
     ## CLIPBOARD
+    {
     pass show "$entry" | sed '1!d' | tr -d '\n' |
     xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-    
+    }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
   done
