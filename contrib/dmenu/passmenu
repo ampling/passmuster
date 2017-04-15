@@ -19,8 +19,9 @@ password_files=( "${password_files[@]%.gpg}" )
 password=''
 cleanup=''
 before=''
+myname=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="${0##*/} [-h help] [-v version] [<dmenu []>]"
+usage="$myname [-h help] [-v version] [<dmenu []>]"
 
 
 ## Try to use libnotify.
@@ -72,10 +73,7 @@ stalelock=${stalelock:-''}
 stalelock=$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
 if [[ -n "$stalelock" ]];then
   stalename=${stalelock%.*}
-  report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "passmenu" | grep -v "$$")
-  # report=$(ps -u "user id") aux | grep "bash" | grep "passmenu" | grep "not itself id")
-  report2=$(pgrep -f "${0##*/}" > /dev/null)
-  echo "report2= $report2"
+  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//' )
   stalePID=$(printf %s "$stalename" | 
   sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
   if [[ $report == *"$stalePID"* ]]; then
