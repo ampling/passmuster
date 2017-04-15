@@ -24,7 +24,7 @@ userID=$(id -u "$(whoami)")
 usage="$myname [-h help] [-v version] [<dmenu []>]"
 
 
-## Try to use libnotify.
+## LIBNOTIFY ROCKS
 { hash notify-send 2>/dev/null && notifyit=1; } || 
 { printf '%s\n' "w: libnotify not found" && notifyit=0; }
 
@@ -46,15 +46,16 @@ _finish () {
 }
 
 
-{ hash xdotool 2>/dev/null && typeit=1; } || 
-{ _notify "w: xdotool not found."; typeit=0; } 
+
+{ hash xdotool 2>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; } 
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
-[[ $arg1 == '--type' || $arg2 == '--type' ]] && { typeit=1 && shift; }
+[[ $arg1 == '--clip' || $arg2 == '--clip' ]] && { clipit=1 && shift; }
 [[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
+echo "clipit = $clipit"
 
 ## dmenu exits on KeyPress not KeyRelease.
 ## It might be nice to send KeyRelease event to some dummy window.
@@ -70,16 +71,16 @@ trap _finish EXIT
 ## Clearing old filelock(s). 
 umask 077
 stalelock=${stalelock:-''}
-stalelock=$(find '/tmp' -maxdepth 1 -name "passmenu.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
-if [[ -n "$stalelock" ]];then
+stalelock=$(find '/tmp' -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
+if [[ -n "$stalelock" ]]; then
   stalename=${stalelock%.*}
-  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//' )
+  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
   stalePID=$(printf %s "$stalename" | 
-  sed -e "s/\/tmp\/passmenu\.[0-9]\{1,6\}\?\..*\.//g")
+  sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
   if [[ $report == *"$stalePID"* ]]; then
     kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
   else
-    rmdir /tmp/passmenu."$userID".* >/dev/null 2>&1 ||
+    rmdir /tmp/"$myname"."$userID".* >/dev/null 2>&1 ||
     { _notify ":: Unable to clear old filelock"; exit 1; }
   fi
 fi
@@ -94,16 +95,7 @@ before=$(xclip -sel "$X_SELECTION" -o 2>/dev/null | base64) || true
 cleanup=True
 
 round=0
-if [[ $typeit -eq 0 ]]; then
-  for entry in "${passel[@]}"; do
-    { ## CLIPBOARD
-    pass show "$entry" | sed '1!d' | tr -d '\n' |
-    xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
-    } &&
-    _notify "${passel[$round]} sent via $X_SELECTION"
-    round=$((round + 1))
-  done
-else
+if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
     { ## AUTOTYPE
@@ -111,6 +103,15 @@ else
     xdotool type --delay --clearmodifiers --file -
     } &&
     _notify "${passel[$round]} sent via xdotool"
+    round=$((round + 1))
+  done
+else
+  for entry in "${passel[@]}"; do
+    { ## CLIPBOARD
+    pass show "$entry" | sed '1!d' | tr -d '\n' |
+    xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
+    } &&
+    _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
   done
 fi
