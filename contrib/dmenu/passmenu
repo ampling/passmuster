@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 ##
-## A dynamic passboard.
+## A dynamic pass menu.
 ##
 ## [Ampling] [2016-2017]
 ##
 
-## DEPENDENCIES;  pass, dmenu
+## DEPENDENCIES; dmenu, pass
 ## (optional)     libnotify, xdotool
 
 shopt -s nullglob globstar failglob
@@ -27,10 +27,10 @@ cleanup=''
 before=''
 myname=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="$myname [-h help] [-v version] [<dmenu []>]"
+usage="$myname [-h help] [-k kill] [-v version] [<dmenu []>]"
 
 
-## LIBNOTIFY ROCKS
+## Try libnotify first.
 { hash notify-send 2>/dev/null && notifyit=1; } || 
 { printf '%s\n' "w: libnotify not found" && notifyit=0; }
 
@@ -40,9 +40,26 @@ _notify () {
   [[ "$notifyit" == 1 ]] && 
   notify-send "$message" --icon=dialog-password || printf '%s\n' "$message"
   printf '%s\n' "$message"
-
 }
 
+_clear () {
+  ## Clears old filelock(s). 
+  umask 077
+  stalelock=${stalelock:-''}
+  stalelock=$(find '/tmp' -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
+  if [[ -n "$stalelock" ]]; then
+    stalename=${stalelock%.*}
+    report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
+    stalePID=$(printf %s "$stalename" | 
+    sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
+    if [[ $report == *"$stalePID"* ]]; then
+      kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
+    else
+      rmdir /tmp/"$myname"."$userID".* >/dev/null 2>&1 ||
+      { _notify ":: Unable to clear old filelock"; exit 1; }
+    fi
+  fi
+}
 
 _finish () {
   [[ True == "$cleanup" ]] &&
@@ -56,14 +73,18 @@ _finish () {
 
 
 { hash xdotool 2>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; } 
+hash xclip || _notify "w: xclip not found." 
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
 [[ $arg1 == '--clip' || $arg2 == '--clip' ]] && { clipit=1 && shift; }
 [[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
+[[ $arg1 == *k* || $arg2 == *k* ]] &&
+{ printf '%s\n' "cleaning and exiting..."; _clear; exit; }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
-echo "clipit = $clipit"
+# Runs the _finish funtion on exit. 
+trap _finish EXIT
 
 ## dmenu exits on KeyPress not KeyRelease.
 ## It might be nice to send KeyRelease event to some dummy window.
@@ -71,27 +92,8 @@ for password in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$password")
 done
 
-# Runs the _finish funtion on exit. 
-trap _finish EXIT
 
-[[ -n $password ]] || exit
-
-## Clearing old filelock(s). 
-umask 077
-stalelock=${stalelock:-''}
-stalelock=$(find '/tmp' -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
-if [[ -n "$stalelock" ]]; then
-  stalename=${stalelock%.*}
-  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-  stalePID=$(printf %s "$stalename" | 
-  sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
-  if [[ $report == *"$stalePID"* ]]; then
-    kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
-  else
-    rmdir /tmp/"$myname"."$userID".* >/dev/null 2>&1 ||
-    { _notify ":: Unable to clear old filelock"; exit 1; }
-  fi
-fi
+_clear; [[ -n $password ]] || exit
 
 ## Adding a new filelock
 ( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" >/dev/null 2>&1 ||
@@ -110,7 +112,7 @@ if [[ $clipit -eq 0 ]]; then
     pass show "$entry" | sed '1!d' | tr -d '\n' | 
     xdotool type --delay --clearmodifiers --file -
     } &&
-    _notify "${passel[$round]} sent via xdotool"
+    _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
   done
 else
