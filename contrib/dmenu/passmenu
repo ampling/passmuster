@@ -15,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.0
+version=passmenu-0.2.1
 
 arg1=${1:-} 
 arg2=${2:-} 
@@ -43,10 +43,10 @@ _notify () {
 }
 
 _clear () {
-  ## Clears old filelock(s). 
+  ## Clear old filelock(s). 
   umask 077
   stalelock=${stalelock:-''}
-  stalelock=$(find '/tmp' -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print0  -quit -type d) &&
+  stalelock=$(find '/tmp' -maxdepth 1 -name "$myname"."$userID.*" -user "$(whoami)" -print -quit -type d) &&
   if [[ -n "$stalelock" ]]; then
     stalename=${stalelock%.*}
     report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
@@ -64,9 +64,8 @@ _clear () {
 _finish () {
   [[ True == "$cleanup" ]] &&
   printf %s "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &&
-  if compgen -G "/tmp/passmenu.$userID*" >/dev/null 2>&1 ;then
-    rmdir /tmp/passmenu.*.*."$$".lock >/dev/null 2>&1
-  fi
+  compgen -G /tmp/"$myname"."$userID*" >/dev/null 2>&1 &&
+  rmdir /tmp/"$myname".*.*."$$".lock >/dev/null 2>&1
   exit
 }
 
