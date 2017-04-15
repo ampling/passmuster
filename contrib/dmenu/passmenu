@@ -98,7 +98,6 @@ cleanup=True
 
 if [[ $typeit -eq 0 ]]; then
   ## CLIPBOARD
-  if [[ ${#passel[@]} -gt "1" ]]; then
     round=0
     for entry in "${passel[@]}"; do
       pass show "$entry" | sed '1!d' | tr -d '\n' |
@@ -106,15 +105,8 @@ if [[ $typeit -eq 0 ]]; then
       _notify "${passel[$round]} sent via $X_SELECTION"
       round=$((round + 1))
     done
-  else
-    pass show "$password" | sed '1!d' | tr -d '\n' |
-    xclip -sel "$X_SELECTION" -i
-    _notify "$password sent via $X_SELECTION"
-    sleep "$CLIP_TIME"
-  fi
 else
   ## AUTOTYPE
-  if [[ ${#passel[@]} -gt "1" ]]; then
     round=0
     for entry in "${passel[@]}"; do
       printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" >/dev/null 2>&1
@@ -123,10 +115,5 @@ else
       _notify "${passel[$round]} sent via xdotool"
       round=$((round + 1))
     done
-  else
-    pass show "$password" | sed '1!d' | tr -d '\n' |
-    xdotool type --delay --clearmodifiers --file -
-    _notify "$password sent via autotype"
-  fi
 fi
 exit
