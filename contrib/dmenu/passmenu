@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+##
+## A dynamic passboard.
+##
+## [Ampling] [2016-2017]
+##
+
 ## DEPENDENCIES;  pass, dmenu
 ## (optional)     libnotify, xdotool
 
@@ -9,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.1.1
+version=passmenu-0.2.0
 
 arg1=${1:-} 
 arg2=${2:-} 
@@ -32,7 +38,9 @@ usage="$myname [-h help] [-v version] [<dmenu []>]"
 _notify () {
   message=$1
   [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=dialog-information || printf '%s\n' "$message"
+  notify-send "$message" --icon=dialog-password || printf '%s\n' "$message"
+  printf '%s\n' "$message"
+
 }
 
 
