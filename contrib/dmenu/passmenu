@@ -15,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.4
+version=passmenu-0.2.5
 
 arg1=${1:-} 
 arg2=${2:-} 
@@ -62,7 +62,6 @@ _clear () {
 }
 
 _finish () {
-  echo "final before= $before"
   [[ True == "$cleanup" ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &>/dev/null &&
   compgen -G /tmp/"$myname.$userID*" &>/dev/null &&
@@ -103,17 +102,15 @@ cleanup=True
 # It would be nice to first test if string exists.
 before=$(xclip -sel "$X_SELECTION" -o | base64) || true
 cleanup=True
-echo "x-sel= $X_SELECTION"
-echo "new before= $before"
 
 round=0
 if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     ## AUTOTYPE
     {
-    secret=$(pass show "$entry" | sed '1!d' | tr -d '\n')
     printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-    printf '%s' "$secret" | xdotool type --delay --clearmodifiers --file - &>/dev/null
+    pass show "$entry" | sed '1!d' | tr -d '\n' |
+    xdotool type --delay --clearmodifiers --file -
     }
     _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
@@ -122,8 +119,9 @@ else
   for entry in "${passel[@]}"; do
     ## CLIPBOARD
     {
+    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     pass show "$entry" | sed '1!d' | tr -d '\n' |
-    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+    xclip -quiet -sel "$X_SELECTION"
     }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
