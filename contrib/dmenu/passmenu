@@ -15,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.5
+version=passmenu-0.2.6
 
 arg1=${1:-} 
 arg2=${2:-} 
@@ -27,7 +27,7 @@ cleanup=''
 before=''
 myname=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="$myname [-h help] [-k kill] [-v version] [<dmenu []>]"
+usage="$myname [-h help] [-k kill] [-v version] [-c clip] [<dmenu []>]"
 
 
 ## Try libnotify first.
@@ -76,8 +76,8 @@ hash xclip || _notify "w: xclip not found."
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
-[[ $arg1 == '--clip' || $arg2 == '--clip' ]] && { clipit=1 && shift; }
-[[ $arg1 == '--notify' || $arg2 == '--notify' ]] && { notifyit=1 && shift; }
+[[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift; }
+[[ $arg1 == *no* || $arg2 == *no* ]] && { notifyit=1 && shift; }
 [[ $arg1 == *k* || $arg2 == *k* ]] &&
 { printf '%s\n' "clean and exit..."; _clear; exit; }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
@@ -119,9 +119,8 @@ else
   for entry in "${passel[@]}"; do
     ## CLIPBOARD
     {
-    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     pass show "$entry" | sed '1!d' | tr -d '\n' |
-    xclip -quiet -sel "$X_SELECTION"
+    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
