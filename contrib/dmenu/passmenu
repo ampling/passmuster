@@ -43,19 +43,19 @@ _notify () {
 }
 
 _clear () {
-  ## Clear old filelock(s). 
+  ## Removes old filelock(s). 
   umask 077
   stalelock=${stalelock:-''}
-  stalelock=$(find /tmp -maxdepth 1 -name "$myname"."$userID.*" -user "$(whoami)" -print -quit -type d) &&
+  stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
   if [[ -n "$stalelock" ]]; then
     stalename=${stalelock%.*}
     report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/"$myname"\.[0-9]\{1,6\}\?\..*\.//g")
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
     parentID=$(ps -o pid= --ppid "$stalePID" )
     if [[ $report == *"$stalePID"* ]]; then
       kill "$parentID" &>/dev/null || exit 1
     else
-      rmdir /tmp/"$myname.$userID".* &>/dev/null ||
+      rmdir /tmp/passmenu."$userID".* &>/dev/null ||
       { _notify ":: Unable to clear old filelock"; exit 1; }
     fi
   fi
