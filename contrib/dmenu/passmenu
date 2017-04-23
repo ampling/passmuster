@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 ##
-## A dynamic pass menu.
+## A dynamic multi password selection menu.
 ##
 ## [Ampling] [2016-2017]
 ##
 
-## DEPENDENCIES; dmenu, pass
-## (optional)     libnotify, xdotool
+## DEPENDENCIES;  dmenu, pass
+## (optional)	  libnotify, xdotool
 
 shopt -s nullglob globstar failglob
 set -euo pipefail
@@ -15,31 +15,30 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.6
+version=passmenu-0.2.7
 
 arg1=${1:-} 
 arg2=${2:-} 
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
+cleanup=False
 selection=''
-cleanup=''
 before=''
 myname=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="$myname [-h help] [-k kill] [-v version] [-c clip] [<dmenu []>]"
+usage="$myname [-h help] [-k kill] [-v version] [-c clip] [-q quiet] [-- dmenu]"
 
 
 ## Try libnotify first.
-{ hash notify-send &>/dev/null && notifyit=1; } || 
-{ printf '%s\n' "w: libnotify not found" && notifyit=0; }
+{ hash notify-send &>/dev/null && notifyit=0; } || 
+{ printf '%s\n' "w: libnotify not found" && notifyit=1; }
 
 
 _notify () {
   message=$1
-  [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=dialog-password || printf '%s\n' "$message"
-  printf '%s\n' "$message"
+  [[ $notifyit -eq 0 ]] && notify-send "$message" --icon=dialog-password
+  [[ $notifyit -le 1 ]] && printf '%s\n' "$message"
 }
 
 _clear () {
@@ -56,7 +55,7 @@ _clear () {
       kill "$parentID" &>/dev/null || exit 1
     else
       rmdir /tmp/passmenu."$userID".* &>/dev/null ||
-      { _notify ":: Unable to clear old filelock"; exit 1; }
+      { _notify "e: Unable to clear old filelock"; exit 1; }
     fi
   fi
 }
@@ -64,46 +63,44 @@ _clear () {
 _finish () {
   [[ True == "$cleanup" ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &>/dev/null &&
-  compgen -G /tmp/"$myname.$userID*" &>/dev/null &&
+  compgen -G /tmp/passmenu."$userID"* &>/dev/null &&
   rmdir /tmp/passmenu.*.*."$$".lock &>/dev/null
   exit
 }
 
 
 hash xclip || _notify "w: xclip not found." 
-{ hash xdotool &>/dev/null && clipit=0; } || 
-{ _notify "w: xdotool not found."; clipit=0; } 
+{ hash xdotool &>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; } 
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
+[[ $arg1 == *k* || $arg2 == *k* ]] && { _notify "clean and exit."; _clear; exit; }
 [[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift; }
-[[ $arg1 == *no* || $arg2 == *no* ]] && { notifyit=1 && shift; }
-[[ $arg1 == *k* || $arg2 == *k* ]] &&
-{ printf '%s\n' "clean and exit..."; _clear; exit; }
+{ [[ $arg1 == *qq* || $arg2 == *qq* ]] && { notifyit=2 && shift; } } ||
+{ [[ $arg1 == *q* || $arg2 == *q* ]] && { notifyit=1 && shift; } }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
 # Runs the _finish funtion on exit. 
 trap _finish EXIT
 
 ## dmenu exits on KeyPress not KeyRelease.
-## It might be nice to send KeyRelease event to some dummy window.
+## It might be nice to send KeyRelease event to dummy window.
 for selection in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$selection")
 done
 
-
 _clear; [[ -n $selection ]] || exit
 
-## Add a new filelock
+## Add new filelock
 ( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
-{ _notify ":: Unable to make filelock."; exit 1; } ) &&
-cleanup=True
+{ _notify ":: Unable to make filelock."; exit 1; } )
 
-# It would be nice to first test if string exists.
+## It would be nice to first test if X-selection is null.
 before=$(xclip -sel "$X_SELECTION" -o | base64) || true
 cleanup=True
-
 round=0
+
+
 if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     ## AUTOTYPE
