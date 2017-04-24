@@ -3,8 +3,9 @@
 ##
 ## A consistent pass entry multi selection menu.
 ##
-## [Ampling] [2016-2017]
-##
+
+## [2014-2016]  [Jason A. Donenfeld]
+## [2016-2017]  [Ampling]
 
 ## DEPENDENCIES;  pass,dmenu
 ## (optional)     libnotify, xdotool
@@ -15,7 +16,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.4.2
+version=passmuster-0.4.3
 
 arg1=${1:-}
 arg2=${2:-}
