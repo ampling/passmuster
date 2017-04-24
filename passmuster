@@ -15,7 +15,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.3.0
+version=passmuster-0.4.0
 
 arg1=${1:-}
 arg2=${2:-}
@@ -54,7 +54,7 @@ _clear () {
     if [[ $report == *"$stalePID"* ]]; then
       kill "$parentID" &>/dev/null || exit 1
     else
-      rmdir /tmp/passmenu."$userID".* &>/dev/null ||
+      rmdir /tmp/passmuster."$userID".* &>/dev/null ||
       { _notify "e: Unable to clear old filelock"; exit 1; }
     fi
   fi
@@ -63,8 +63,8 @@ _clear () {
 _finish () {
   [[ $cleanup == True ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &>/dev/null &&
-  compgen -G /tmp/passmenu."$userID"* &>/dev/null &&
-  rmdir /tmp/passmenu.*.*."$$".lock &>/dev/null
+  compgen -G /tmp/passmuster."$userID"* &>/dev/null &&
+  rmdir /tmp/passmuster.*.*."$$".lock &>/dev/null
   exit
 }
 
@@ -94,7 +94,7 @@ done
 _clear; [[ -n $selection ]] || exit
 
 ## Add new filelock
-( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
+( mktemp -d "/tmp/passmuster.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
 { _notify "e: Unable to make filelock."; exit 1; } )
 
 ## It would be nice to first test if X-selection is null.
