@@ -15,10 +15,10 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.7
+version=passmenu-0.2.8
 
-arg1=${1:-} 
-arg2=${2:-} 
+arg1=${1:-}
+arg2=${2:-}
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
@@ -31,7 +31,7 @@ usage="$myname [-h help] [-k kill] [-v version] [-c clip] [-q quiet] [-- dmenu]"
 
 
 ## Try libnotify first.
-{ hash notify-send &>/dev/null && notifyit=0; } || 
+{ hash notify-send &>/dev/null && notifyit=0; } ||
 { printf '%s\n' "w: libnotify not found" && notifyit=1; }
 
 
@@ -42,7 +42,7 @@ _notify () {
 }
 
 _clear () {
-  ## Removes old filelock(s). 
+  ## Removes old filelock(s).
   umask 077
   stalelock=${stalelock:-''}
   stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
@@ -69,8 +69,10 @@ _finish () {
 }
 
 
-hash xclip || _notify "w: xclip not found." 
-{ hash xdotool &>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; } 
+hash xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit; }
+{ hash xdotool &>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; }
+## Check for a qupzilla bug which triggers unwanted x-selection events.
+pgrep -fa 'qupzilla' &>/dev/null && _notify "w: conflicts with qupzilla"
 
 [[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
@@ -80,7 +82,7 @@ hash xclip || _notify "w: xclip not found."
 { [[ $arg1 == *q* || $arg2 == *q* ]] && { notifyit=1 && shift; } }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
-# Runs the _finish funtion on exit. 
+# Runs the _finish funtion on exit.
 trap _finish EXIT
 
 ## dmenu exits on KeyPress not KeyRelease.
@@ -93,7 +95,7 @@ _clear; [[ -n $selection ]] || exit
 
 ## Add new filelock
 ( mktemp -d "/tmp/passmenu.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
-{ _notify ":: Unable to make filelock."; exit 1; } )
+{ _notify "e: Unable to make filelock."; exit 1; } )
 
 ## It would be nice to first test if X-selection is null.
 before=$(xclip -sel "$X_SELECTION" -o | base64) || true
@@ -105,9 +107,9 @@ if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     ## AUTOTYPE
     {
-    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-    pass show "$entry" | sed '1!d' | tr -d '\n' |
-    xdotool type --delay --clearmodifiers --file -
+      printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+      pass show "$entry" | sed '1!d' | tr -d '\n' |
+      xdotool type --delay --clearmodifiers --file -
     }
     _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
@@ -116,8 +118,8 @@ else
   for entry in "${passel[@]}"; do
     ## CLIPBOARD
     {
-    pass show "$entry" | sed '1!d' | tr -d '\n' |
-    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+      pass show "$entry" | sed '1!d' | tr -d '\n' |
+      xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
