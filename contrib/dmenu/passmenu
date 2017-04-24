@@ -15,12 +15,12 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmenu-0.2.8
+version=passmenu-0.2.9
 
 arg1=${1:-}
 arg2=${2:-}
 password_files=( "$prefix"/**/*.gpg )
-password_files=( "${password_files[@]#"$prefix"/}" )
+password_files=( "${password_files[@]#$prefix/}" )
 password_files=( "${password_files[@]%.gpg}" )
 cleanup=False
 selection=''
@@ -61,7 +61,7 @@ _clear () {
 }
 
 _finish () {
-  [[ True == "$cleanup" ]] &&
+  [[ $cleanup == True ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &>/dev/null &&
   compgen -G /tmp/passmenu."$userID"* &>/dev/null &&
   rmdir /tmp/passmenu.*.*."$$".lock &>/dev/null
@@ -82,7 +82,7 @@ pgrep -fa 'qupzilla' &>/dev/null && _notify "w: conflicts with qupzilla"
 { [[ $arg1 == *q* || $arg2 == *q* ]] && { notifyit=1 && shift; } }
 [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
 
-# Runs the _finish funtion on exit.
+## Runs the _finish funtion on exit.
 trap _finish EXIT
 
 ## dmenu exits on KeyPress not KeyRelease.
@@ -107,9 +107,9 @@ if [[ $clipit -eq 0 ]]; then
   for entry in "${passel[@]}"; do
     ## AUTOTYPE
     {
-      printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-      pass show "$entry" | sed '1!d' | tr -d '\n' |
-      xdotool type --delay --clearmodifiers --file -
+    printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+    pass show "$entry" | sed '1!d' | tr -d '\n' |
+    xdotool type --delay --clearmodifiers --file -
     }
     _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
@@ -118,8 +118,8 @@ else
   for entry in "${passel[@]}"; do
     ## CLIPBOARD
     {
-      pass show "$entry" | sed '1!d' | tr -d '\n' |
-      xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
+    pass show "$entry" | sed '1!d' | tr -d '\n' |
+    xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
