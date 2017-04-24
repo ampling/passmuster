@@ -7,7 +7,7 @@
 ## [2014-2016]  [Jason A. Donenfeld]
 ## [2016-2017]  [Ampling]
 
-## DEPENDENCIES;  pass,dmenu
+## DEPENDENCIES;  pass, dmenu
 ## (optional)     libnotify, xdotool
 
 shopt -s nullglob globstar failglob
@@ -16,7 +16,7 @@ set -euo pipefail
 ## SETTINGS
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.4.3
+version=passmuster-0.4.4
 
 arg1=${1:-}
 arg2=${2:-}
@@ -98,7 +98,7 @@ _clear; [[ -n $selection ]] || exit
 ( mktemp -d "/tmp/passmuster.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
 { _notify "e: Unable to make filelock."; exit 1; } )
 
-## It would be nice to first test if X-selection is null.
+## Avoid setting bash variables to null.
 before=$(xclip -sel "$X_SELECTION" -o | base64) || true
 cleanup=True
 round=0
