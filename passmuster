@@ -15,7 +15,7 @@ set -euo pipefail
 
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.4.5
+version=passmuster-0.4.6
 
 arg1=${1:-}
 arg2=${2:-}
@@ -31,8 +31,8 @@ usage="$myname [help] [kill] [version] [clip] [quiet] [dmenu...]"
 
 
 ## Check for optional dependency, libnotify.
-{ hash notify-send &>/dev/null && notifyit=0; } ||
-{ printf '%s\n' "w: libnotify not found" && notifyit=1; }
+{ hash notify-send &>/dev/null && notifyit=0 ;} ||
+{ printf '%s\n' "w: libnotify not found" && notifyit=1 ;}
 
 
 _notify () {
@@ -46,18 +46,15 @@ _clear () {
   umask 077
   stalelock=${stalelock:-''}
   stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
-  if [[ -n "$stalelock" ]]; then
-    stalename=${stalelock%.*}
-    report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
-    parentID=$(ps -o pid= --ppid "$stalePID" )
-    if [[ $report == *"$stalePID"* ]]; then
-      kill "$parentID" &>/dev/null || exit 1
-    else
-      rmdir /tmp/passmuster."$userID".* &>/dev/null ||
-      { _notify "e: Unable to clear old filelock"; exit 1; }
-    fi
-  fi
+  [[ -n "$stalelock" ]] && {
+  stalename=${stalelock%.*}
+  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
+  stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
+  parentID=$(ps -o pid= --ppid "$stalePID" )
+  [[ $report == *"$stalePID"* ]] &&
+  { kill "$parentID" &>/dev/null || exit 1 ;} ||
+  { rmdir /tmp/passmuster."$userID".* &>/dev/null ||
+  { _notify "e: Unable to clear old filelock"; exit 1 ;} } }
 }
 
 _finish () {
@@ -69,18 +66,18 @@ _finish () {
 }
 
 
-hash xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit; }
-{ hash xdotool &>/dev/null && clipit=0; } || { _notify "w: xdotool not found."; clipit=0; }
+hash xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit ;}
+{ hash xdotool &>/dev/null && clipit=0 ;} || { _notify "w: xdotool not found."; clipit=0 ;}
 ## Check for unwanted x-selection events caused by Qupzilla issue.
 pgrep -fa 'qupzilla' &>/dev/null && _notify "w: conflicts with qupzilla"
 
-[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit; }
-[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit; }
-[[ $arg1 == *k* || $arg2 == *k* ]] && { _notify "clean and exit."; _clear; exit; }
-[[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift; }
-{ [[ $arg1 == *qq* || $arg2 == *qq* ]] && { notifyit=2 && shift; } } ||
-{ [[ $arg1 == *q* || $arg2 == *q* ]] && { notifyit=1 && shift; } }
-[[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit ;}
+[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit ;}
+[[ $arg1 == *k* || $arg2 == *k* ]] && { _notify "clean and exit."; _clear; exit ;}
+[[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift ;}
+{ [[ $arg1 == *qq* || $arg2 == *qq* ]] && { notifyit=2 && shift ;} } ||
+{ [[ $arg1 == *q* || $arg2 == *q* ]] && { notifyit=1 && shift ;} }
+[[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit ;}
 
 ## Runs the _finish funtion on exit.
 trap _finish EXIT
@@ -95,7 +92,7 @@ _clear; [[ -n $selection ]] || exit
 
 ## Add filelock
 ( mktemp -d "/tmp/passmuster.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
-{ _notify "e: Unable to make filelock."; exit 1; } )
+{ _notify "e: Unable to make filelock."; exit 1 ;} )
 
 ## Avoid setting bash variables to null.
 before=$(xclip -sel "$X_SELECTION" -o | base64) || true
@@ -103,26 +100,23 @@ cleanup=True
 round=0
 
 
-if [[ $clipit -eq 0 ]]; then
-  ## AUTOTYPE
+[[ $clipit == 0 ]] &&
+{ ## AUTOTYPE
   for entry in "${passel[@]}"; do
-    {
     printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     pass show "$entry" | sed '1!d' | tr -d '\n' |
     xdotool type --delay --clearmodifiers --file -
-    }
     _notify "${passel[$round]} sent via autotype"
     round=$((round + 1))
   done
-else
-  ## CLIPBOARD
+}
+[[ $clipit == 1 ]] &&
+{ ## CLIPBOARD
   for entry in "${passel[@]}"; do
-    {
     pass show "$entry" | sed '1!d' | tr -d '\n' |
     xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-    }
     _notify "${passel[$round]} sent via $X_SELECTION"
     round=$((round + 1))
   done
-fi
+}
 exit
