@@ -15,7 +15,7 @@ set -euo pipefail
 
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.4.6
+version=passmuster-0.4.7
 
 arg1=${1:-}
 arg2=${2:-}
@@ -46,15 +46,16 @@ _clear () {
   umask 077
   stalelock=${stalelock:-''}
   stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
-  [[ -n "$stalelock" ]] && {
-  stalename=${stalelock%.*}
-  report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-  stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
-  parentID=$(ps -o pid= --ppid "$stalePID" )
-  [[ $report == *"$stalePID"* ]] &&
-  { kill "$parentID" &>/dev/null || exit 1 ;} ||
-  { rmdir /tmp/passmuster."$userID".* &>/dev/null ||
-  { _notify "e: Unable to clear old filelock"; exit 1 ;} } }
+  if [[ -n "$stalelock" ]]; then
+    stalename=${stalelock%.*}
+    report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
+    parentID=$(ps -o pid= --ppid "$stalePID" )
+    [[ $report == *"$stalePID"* ]] &&
+    { kill "$parentID" &>/dev/null || exit 1 ;} || 
+    { rmdir /tmp/passmuster."$userID".* &>/dev/null || 
+    { _notify "e: Unable to clear old filelock"; exit 1 ;} ;}
+  fi
 }
 
 _finish () {
@@ -100,8 +101,8 @@ cleanup=True
 round=0
 
 
-[[ $clipit == 0 ]] &&
-{ ## AUTOTYPE
+[[ $clipit -eq 0 ]] && {
+  ## AUTOTYPE
   for entry in "${passel[@]}"; do
     printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
     pass show "$entry" | sed '1!d' | tr -d '\n' |
@@ -110,8 +111,8 @@ round=0
     round=$((round + 1))
   done
 }
-[[ $clipit == 1 ]] &&
-{ ## CLIPBOARD
+[[ $clipit -eq 1 ]] && {
+  ## CLIPBOARD
   for entry in "${passel[@]}"; do
     pass show "$entry" | sed '1!d' | tr -d '\n' |
     xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
