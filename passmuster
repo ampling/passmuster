@@ -13,6 +13,7 @@
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
+manager=${PASSWORD_MANAGER:-pass}
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
 version=passmuster-0.4.10
@@ -21,6 +22,7 @@ arg1=${1:-}
 arg2=${2:-}
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#$prefix/}" )
+[[ $manager == pass ]] &&
 password_files=( "${password_files[@]%.gpg}" )
 cleanup=False
 selection=''
@@ -107,7 +109,7 @@ round=0
 ## AUTOTYPE
 for entry in "${passel[@]}"; do
   printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-  pass "$entry" | sed '1!d' | tr -d '\n' |
+  $manager "$entry" | sed '1!d' | tr -d '\n' |
   xdotool type --delay --clearmodifiers --file -
   _notify "${passel[$round]} sent via autotype"
   round=$((round + 1))
@@ -116,7 +118,7 @@ done
 [[ $clipit -eq 1 ]] && {
 ## CLIPBOARD
 for entry in "${passel[@]}"; do
-  pass "$entry" | sed '1!d' | tr -d '\n' |
+  $manager "$entry" | sed '1!d' | tr -d '\n' |
   xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
   _notify "${passel[$round]} sent via $X_SELECTION"
   round=$((round + 1))
