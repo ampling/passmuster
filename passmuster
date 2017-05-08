@@ -106,9 +106,9 @@ round=0
 [[ $clipit -eq 0 ]] && {
 ## AUTOTYPE
 for entry in "${passel[@]}"; do
+  secret=$(pass "$entry" | sed '1!d' | tr -d '\n')
   printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-  pass "$entry" | sed '1!d' | tr -d '\n' |
-  xdotool type --delay --clearmodifiers --file -
+  printf '%s' "$secret" | xdotool type --delay --clearmodifiers --file -
   _notify "${passel[$round]} sent via autotype"
   round=$((round + 1))
 done
