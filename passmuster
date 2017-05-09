@@ -16,7 +16,7 @@ set -euo pipefail
 manager=${PASSWORD_MANAGER:-pass}
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.5.0
+version=passmuster-0.5.1
 
 arg1=${1:-}
 arg2=${2:-}
@@ -108,9 +108,9 @@ round=0
 [[ $clipit -eq 0 ]] && {
 ## AUTOTYPE
 for entry in "${passel[@]}"; do
-  secret=$("$manager" "$entry" | sed '1!d' | tr -d '\n'| base64)
-  printf '' | xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-  printf '%s' "$secret" | base64 -d | xdotool type --delay --clearmodifiers --file -
+  "$manager" "$entry" | sed '1!d' | tr -d '\n' | 
+  tee $(xclip -i -l 1 -quiet -sel "$X_SELECTION" &>/dev/null) |
+  xdotool type --delay --clearmodifiers --file -
   _notify "${passel[$round]} sent via autotype"
   round=$((round + 1))
 done
