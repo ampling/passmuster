@@ -64,7 +64,7 @@ _clear () {
 _finish () {
   [[ $cleanup == True ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$x_selection" -i &>/dev/null &&
-  compgen -G /tmp/passmuster."$userID"* &>/dev/null &&
+  { compgen -G /tmp/passmuster."$userID"* &>/dev/null || exit 0 ;} &&
   rmdir /tmp/passmuster.*.*."$$".lock &>/dev/null
   exit 0
 }
