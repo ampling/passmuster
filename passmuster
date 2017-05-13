@@ -15,7 +15,7 @@ set -euo pipefail
 
 X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.5.1
+version=passmuster-0.5.2
 
 arg1=${1:-}
 arg2=${2:-}
@@ -25,9 +25,9 @@ password_files=( "${password_files[@]%.gpg}" )
 cleanup=False
 selection=''
 before=''
-myname=${0##*/}
+my_name=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="$myname [help] [kill] [version] [clip] [quiet] [dmenu...]"
+usage="$my_name [help] [kill] [version] [clip] [quiet] [dmenu...]"
 
 
 ## Check for optional dependency, libnotify.
@@ -45,16 +45,17 @@ _clear () {
   ## Removes old filelock(s).
   umask 077
   stalelock=${stalelock:-''}
-  stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
+  stalelock=$(find /tmp -maxdepth 1 -name "$my_name.$userID.*" -user "$(whoami)" -print -quit -type d) &&
   if [[ -n "$stalelock" ]]; then
     stalename=${stalelock%.*}
-    report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
-    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
+    report=$(pgrep -fa "$my_name" | grep bash | sed 's/\s.*$//')
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$my_name\.[0-9]\{1,6\}\?\..*\.//g")
+    [[ $report == *"$stalePID"* ]] &&
+    {
     parentID=$(ps -o pid= --ppid "$stalePID" )
-    [[ $report == *"$stalePID"* ]] && {
-    { kill "$parentID" &>/dev/null || exit 1 ;} || 
-    { rmdir /tmp/passmuster."$userID".* &>/dev/null || 
-    { _notify "e: Unable to clear old filelock"; exit 1 ;} ;} ;}
+    kill "$parentID" &>/dev/null || _notify "e: Unable to kill old process"
+    } || exit 1
+    rmdir /tmp/passmuster."$userID".* &>/dev/null || _notify "e: Unable to clear old filelock"
   fi
 }
 
