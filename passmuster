@@ -14,7 +14,7 @@ shopt -s nullglob globstar failglob
 set -euo pipefail
 
 manager=${PASSWORD_MANAGER:-pass}
-X_SELECTION=${PASSWORD_STORE_X_SELECTION:-clipboard}
+x_selection=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
 version=passmuster-0.5.2
 
@@ -63,10 +63,10 @@ _clear () {
 
 _finish () {
   [[ $cleanup == True ]] &&
-  printf '%s' "$before" | base64 -d | xclip -sel "$X_SELECTION" -i &>/dev/null &&
+  printf '%s' "$before" | base64 -d | xclip -sel "$x_selection" -i &>/dev/null &&
   compgen -G /tmp/passmuster."$userID"* &>/dev/null &&
   rmdir /tmp/passmuster.*.*."$$".lock &>/dev/null
-  exit
+  exit 0
 }
 
 
@@ -94,14 +94,14 @@ for selection in $(printf '%s\n' "${password_files[@]}" | dmenu -f "$@"); do
   passel+=("$selection")
 done
 
-_clear; [[ -n $selection ]] || exit
+_clear; [[ -n $selection ]] || exit 1
 
 ## Add filelock
 ( mktemp -d "/tmp/passmuster.$userID.XXXXXXXXXX.$$.lock" &>/dev/null ||
 { _notify "e: Unable to make filelock."; exit 1 ;} )
 
 ## Avoid setting bash variables to null.
-before=$(xclip -sel "$X_SELECTION" -o | base64) || true
+before=$(xclip -sel "$x_selection" -o | base64) || true
 cleanup=True
 round=0
 
@@ -109,8 +109,8 @@ round=0
 [[ $clipit -eq 0 ]] && {
 ## AUTOTYPE
 for entry in "${passel[@]}"; do
-  "$manager" "$entry" | sed '1!d' | tr -d '\n' | 
-  tee $(xclip -i -l 1 -quiet -sel "$X_SELECTION" &>/dev/null) |
+ " $manager" "$entry" | sed '1!d' | tr -d '\n' | 
+  tee $(xclip -i -l 1 -quiet -sel "$x_selection" &>/dev/null) |
   xdotool type --delay --clearmodifiers --file -
   _notify "${passel[$round]} sent via autotype"
   round=$((round + 1))
@@ -119,11 +119,9 @@ done
 [[ $clipit -eq 1 ]] && {
 ## CLIPBOARD
 for entry in "${passel[@]}"; do
-  "$manager" "$entry" | sed '1!d' | tr -d '\n' |
-  xclip -l 1 -quiet -sel "$X_SELECTION" &>/dev/null
-  _notify "${passel[$round]} sent via $X_SELECTION"
+  $manager "$entry" | sed '1!d' | tr -d '\n' |
+  xclip -l 1 -quiet -sel "$x_selection" &>/dev/null
+  _notify "${passel[$round]} sent via $x_selection"
   round=$((round + 1))
 done
 }
-
-exit
