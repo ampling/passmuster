@@ -56,7 +56,7 @@ _clear () {
     {
     parentID=$(ps -o pid= --ppid "$stalePID" )
     kill "$parentID" &>/dev/null || _notify "e: Unable to kill old process"
-    } || exit 1
+    } || 
     rmdir /tmp/passmuster."$userID".* &>/dev/null || _notify "e: Unable to clear old filelock"
   fi
 }
@@ -64,7 +64,7 @@ _clear () {
 _finish () {
   [[ $cleanup == True ]] &&
   printf '%s' "$before" | base64 -d | xclip -sel "$x_selection" -i &>/dev/null &&
-  { compgen -G /tmp/passmuster."$userID"* &>/dev/null || exit 0 ;} &&
+  compgen -G /tmp/passmuster."$userID"* &>/dev/null &&
   rmdir /tmp/passmuster.*.*."$$".lock &>/dev/null
   exit 0
 }
