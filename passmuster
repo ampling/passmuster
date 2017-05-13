@@ -109,11 +109,11 @@ round=0
 [[ $clipit -eq 0 ]] && {
 ## AUTOTYPE
 for entry in "${passel[@]}"; do
- " $manager" "$entry" | sed '1!d' | tr -d '\n' | 
-  tee $(xclip -i -l 1 -quiet -sel "$x_selection" &>/dev/null) |
+  "$manager" "$entry" | sed '1!d' | tr -d '\n' | 
+  tee >(xclip -i -l 1 -quiet -sel "$x_selection" &>/dev/null) &>/dev/null |
   xdotool type --delay --clearmodifiers --file -
   _notify "${passel[$round]} sent via autotype"
-  round=$((round + 1))
+  ((round+=1))
 done
 }
 [[ $clipit -eq 1 ]] && {
@@ -122,6 +122,6 @@ for entry in "${passel[@]}"; do
   $manager "$entry" | sed '1!d' | tr -d '\n' |
   xclip -l 1 -quiet -sel "$x_selection" &>/dev/null
   _notify "${passel[$round]} sent via $x_selection"
-  round=$((round + 1))
+  ((round+=1))
 done
 }
