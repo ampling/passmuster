@@ -31,7 +31,7 @@ usage="$my_name [help] [kill] [version] [clip] [quiet] [dmenu...]"
 
 
 ## Check for optional dependency, libnotify.
-{ hash notify-send &>/dev/null && notifyit=0 ;} ||
+{ command -v notify-send &>/dev/null && notifyit=0 ;} ||
 { printf '%s\n' "w: libnotify not found" && notifyit=1 ;}
 
 
@@ -73,8 +73,8 @@ _finish () {
 
 
 ## MORE CHECKS
-{ hash xdotool &>/dev/null && clipit=0 ;} || { _notify "w: xdotool not found."; clipit=1 ;}
-( hash xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit 1 ;}
+{ command -v xdotool &>/dev/null && clipit=0 ;} || { _notify "w: xdotool not found."; clipit=1 ;}
+( command -v xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit 1 ;}
 { pgrep -fa 'qupzilla' && _notify "w: qupzilla is known to break our xclip loop." ;} || true
 { [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit ;}
 } || true )
