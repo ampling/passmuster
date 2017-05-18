@@ -15,7 +15,7 @@ set -euo pipefail
 
 x_selection=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.5.4
+version=passmuster-0.5.5
 
 arg1=${1:-}
 arg2=${2:-}
@@ -76,11 +76,11 @@ _finish () {
 { command -v xdotool &>/dev/null && clipit=0 ;} || { _notify "w: xdotool not found."; clipit=1 ;}
 ( command -v xclip &>/dev/null || { _notify "e: xclip not found. Please install xclip."; exit 1 ;}
 { pgrep -fa 'qupzilla' && _notify "w: qupzilla is known to break our xclip loop." ;} || true
-{ [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit ;}
+{ [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit 1 ;}
 } || true )
 
-[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit ;}
-[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit ;}
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit 0 ;}
+[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit 0 ;}
 [[ $arg1 == *k* || $arg2 == *k* ]] && { _notify "clean and exit."; _clear; exit 0 ;}
 [[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift ;}
 {
