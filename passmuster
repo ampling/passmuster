@@ -38,8 +38,8 @@ usage="$my_name [help] [kill] [version] [clip] [quiet] [dmenu...]"
 _notify () {
   (
   message=$1
-  [[ $notifyit -eq 0 ]] && notify-send "$message" --icon=dialog-password
-  [[ $notifyit -le 1 ]] && printf '%s\n' "$message"
+  [[ $notifyit -eq 0 ]] && notify-send "$message" --icon=dialog-password &
+  [[ $notifyit -le 1 ]] && printf '%s\n' "$message" &
   )
 }
 
