@@ -15,7 +15,7 @@ set -euo pipefail
 
 x_selection=${PASSWORD_STORE_X_SELECTION:-clipboard}
 prefix=${PASSWORD_STORE_DIR:-$HOME/.password-store}
-version=passmuster-0.5.6
+version=0.5.7
 
 arg1=${1:-}
 arg2=${2:-}
@@ -27,7 +27,7 @@ selection=''
 before=''
 my_name=${0##*/}
 userID=$(id -u "$(whoami)")
-usage="$my_name [help] [kill] [version] [clip] [quiet] [dmenu...]"
+usage="$my_name $version [help] [kill] [version] [clip] [quiet] [dmenu...]"
 
 
 ## Check for optional dependency, libnotify.
@@ -79,7 +79,7 @@ _finish () {
 { [[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit 1 ;}
 } || true )
 
-[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version" && exit 0 ;}
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$my_name $version" && exit 0 ;}
 [[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage" && exit 0 ;}
 [[ $arg1 == *k* || $arg2 == *k* ]] && { _notify "clean and exit."; _clear; exit 0 ;}
 [[ $arg1 == *c* || $arg2 == *c* ]] && { clipit=1 && shift ;}
